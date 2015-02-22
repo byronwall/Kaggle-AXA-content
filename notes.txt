@@ -1,0 +1,85 @@
+2015 02 22
+
+Ran all of the drivers today using 3 cores.  Worked well.   Took several hours to run it all.  The analysis creates a file for each driver.  I then combined all of those files and did some rounding on the probability to compress the file down some.  First submission was 0.75 or so.  Second submission forced all the entries to 0/1 and it dropped to 0.55 or so.  Looks like I need to get more routes to have lower rankings.
+
+Some ideas:
+ - Force the probability of the "bad" runs to 0.5 or some other number.
+ - Use a less conservative estimate for the probability.  Might just take the ecdf of the hclust heights instead of the ecdf for the distances.
+ - Use a tree cutting mechanism to detemine probabilities.
+ - Start adding more advanced features to the mix and seeing how those separate things out.
+ - Add in some routes from other trips and see if those can be used to segregate drivers.
+ - Use a universal distance distribution to rate trips equally across drivers.
+
+Other thoughts
+ - Can probably get away with running 4 cores if nothing else is needed on the computer
+ - Really need to get source control going on the files.  Making a mess right now and can't go backwards with code.
+
+2015 02 21
+
+Extracted all of the trips that remained.  Did some trip matching on other drivers and it appears to be work pretty good for most drivers.
+
+Need to start thinking about how to evaluate drivers and making submissions.
+
+Did a bit of work to try an unsupervised technique on the driver/trip identification.  Used a combination of velocity and acceleration distributions along with trip matching info.  This seems to do a good job of grouping trips that are similar.  Who knows what it does in terms of overall identification.  Need to run this through all drivers now and make a submission.  From there, it will be possible to make small changes and see how much that affects the score.  If this approach does not do much, then it is off to something else.
+
+The technical details of the probability include: use the min(cophenetic distance) for each trip to get its overall distance. This is then placed in the CDF for the density of all the distances.  1 minus that number gives the probability that it belongs to the driver.  This is a fairly crude thing but it means that no parameters have to be used to get it to work.  It should therefore be somewhat consistent across all drivers.  Using single linkage for the clustering here since it seems to do the best job of making a dendrogram that progressively adds in the "next best" route.  Might eventually use an actual cut on the tree to make better decisions.
+
+2015 02 15
+
+After a bunch of tinkering, it appears that trip matching works best using the delta positions scaled for the distance that was travelled between steps.  Once this was in place, then some trips were similar at different scales.  Added in the distance at each delta position in order to try and remove this.  It seems to be working for now to find similar trips for a handful of drivers.  There are still several assumptions in place.  The major one is the cut being made on the hclust tree.  This approach seems to be quite effective.  The next step would be to further process the groups with DTW in order to exclude those that are not right.  Not sure what to DTW though since there is an offset in place that is affecting things.  Could calculate a delta position over distance travelled and use that.  It is really a velocity comparison with 0 velocity sections removed.  This may not be needed also since the matching seems to be fairly effective.
+
+A good test of this would be to remove the routes that are currently being matched and see what remains.  It be possible to go after this in several iterations.  If nothing else, it may inform what to do next.
+
+There may also be a way to continue with the same algorithm by reducing the number of points that are used to compute the deltas.  As there are fewer points available, it seems to do better with fewer positions to compare.  This will also increase false positives which is why it should be done on filtered data.  This could be coupled with a tighter boundary on the tree cutting.
+
+Need to beign to think about how to use this information to build a classifier.  At this point, there might be enough data to get good results.  Also need to conisder how long it will take to run with all of this going on for each driver.  How long will classification take?
+
+2015 02 14
+
+Was able to get DTW working to align some trips.  Need to figure out how to make sense of its distance metric.  This will be useful across comparison.  One strategy might be to use a hclust procedure to find close trips and then settle it with DTW after that.  It seems that DTW is slow for large matrices, but it might be I am doing it wrong...
+
+2015 02 11
+
+There are some trips (1002:29) which have very large deltas on the trip matching algorithm.  Do these need to be thrown out?  Is there something wrong with the code which is generating these results?  Are they just really long routes and that is causing the deltas to be so large?  If so, does there need to be time or distance specific marker for each data point (log one every 100 seconds or 1000 meters traveled)?
+
+2015 02 10
+
+Additional testing on clustering for trip matching.  Did not work.  Not sure if the scaling is helping.
+
+2015 02 09
+
+Did some more clustering today with the data scaled.  This seems to helps the algorithms out a lot.  It was able to estimate parameters for bclust and produce reasonable looking matchings.  Need to test this out on different drivers and see how it goes.
+
+Also did a test with Mclust but it is harder to see if that is going to work as desired.
+
+2015 02 03
+
+Need to take a stab at trip matching.  Visualization will be key for this to confirm the results.  Start with something simple:match 20 points based on delta from previous position.  Do this based on distance traveled.  Might keep velocity to integrate it for distance traveled.
+
+2015 02 01
+
+Determine what plots of a_t vs. a_t+x look like.  This may provide more information than the acf data.  Used this information but there is not significant differentiation between runs for this to likely matter.  In order for the driver runs to look different enough, most of the underlying information is removed.  This does not say much more than an acceleration or velocity distribution plot looks.
+
+Took another look at ACF for acceleration.  This might be usable if limited to the short initial section of the plot.  Data out past 5 or so if probably garbage.  ACF(velocity) looks to be the most promising.  This one gives a good spread all the way out to a lag of 10.
+
+In order to train a model, need some ability to separate out the misidentified runs for a driver.  Might be able to use trip matching to determine which trips came from the same driver.  From there, assume those are the same and use that to classify the other non trip match related details.  This means that I need to get started on a trip matching algorithm.  This can be an iterative thing though... any improvement in matched trips means more data for the training algorithm.
+
+2015 01 30
+
+Need to determine heading using angle of velocity vector.  This heading business is not going well.  Need to figure out how to deal with the crossover point.
+
+Autocorrelation on the velocity and acceleration data looks promising.  Hopefully these two combined will be a good marker of driver behavior.
+
+Created plots of velocity and acceleration densities.  There is some trend there, but not sure how it's going to work out.  Also create plots of autocorrelation for different drivers.  Again, there is something there.  Need to break it out into features now.
+
+2015 01 26
+
+Determined that it will not work to use acceleration through the square root method.  This makes sense now.  Need to have negative accelerations in order to determine when slowing down.
+
+Did a test of different spline df parameters to determine how this affects the generated derivatives for velocity.  There is no discernable difference when i=2 to 5.  After this it starts to be noticeable.
+
+For acceleration, the same test was done.  In this case, results from i=2 to 6 were the same.  At i =7, the results diverged.  Given the similarity, the same value of i should probably be used for both derivatives.
+
+Completed the code to rotate the route based on the last point's location.  This provides the angle through which all points are rotated.
+
+Did some crude work to flip routes that have y<0 at the middle point of the route.  This is arbitrary and may mean that some routes are flipped incorrectly if they cross the midpoint near there.  Might want to make this more robust.
