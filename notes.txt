@@ -1,4 +1,31 @@
+2015 03 03
+
+Added in the third derivative and provided the means to do PCA on the output.  The new output is a set of heights that can then be globally compared and ordered.  Looks like it is mostly ready to go.  Might want to test a 100 or so trips to see what goes wrong.
+
+Submitted the results from round 2.  There was a decrease in performance from the non-PCA version.  The PCA version increased slightly but nothing earth shattering.  It appears that the addition of the third derivative did not do too much to help.  Couple of initial thoughts:
+ - Dissimilartiies are too skewed by the relative distances.  That is, there are too many of the distance numbers in there.  There might be a need to weight this or remove some of them.  They are essentially the same info repeated several times.  This might even by how PCA improves since there is no increase in variance with these distance measures.
+ - Need to consider something that is not distributional (like trip matching).  For this case, that would mean doing some of the ACF stuff.  It could also mean tallying up other information like others have mentioned (number of stops).
+
+2015 03 02
+
+Next steps:
+ - Combine the third derivative and velocity ACF info into the main algorithm
+ - Test this out on a handful of drivers and see how scores change now
+ - Change the probability calculator to log the height instead.  From there, do the probability part on all of the results together
+
+Did some testing on the derivative of acceleration for comparison purposes.  It looks like this data will be useful.  This is essentially a measure of how quick the person changes their acceleration.  This could be a measure of drivign style that is semi-independent of the route driven.  When looking at this, it appears to be much more useful when filtering out the data where velocity is less than a threshold.  It also appears to do better when centered around 0 with an ODD number of points.  With an even number of points, there is a forced split across zero that does not appear natural.  The filtering of low velocity removes most of the really bad curves anyways.
+
+Did some checking of the difference between velocity and acceleration autocorrelations.  It appears that velocity is a more meaningful variable (i.e. has positive values over 10 lags).  This is probably also a better estimate of driver style since 10 seconds of lag might be reasonable for velocity.  Autocorrelation still does not seem like the best measure for this, but it's what I've got for now.  It would be better to have something that indicated something about how much velocity changes from instant to instant.
+
+2015 02 27
+
+Need to find other variables to add to the model.  Will start with an understading of radius of curtvature and centrip acceleration.
+
+Added cetrigual acceleration and radius of curvature.  Need to consider how to make statistics out of this.  Also considering how to use velocity as a factor to take averages and deviations on acceleration.
+
 2015 02 22
+
+Did an extra submission, forcing all results less than 0.8 to go to 0.  This has no real impact on the score.  This says to me that the improvements will come from forcing more runs to have a lower score.  It seems that most of the current low scores are "correct" or at least are correct enough to not have a huge impact when forcing them lower.
 
 Ran all of the drivers today using 3 cores.  Worked well.   Took several hours to run it all.  The analysis creates a file for each driver.  I then combined all of those files and did some rounding on the probability to compress the file down some.  First submission was 0.75 or so.  Second submission forced all the entries to 0/1 and it dropped to 0.55 or so.  Looks like I need to get more routes to have lower rankings.
 

@@ -4,19 +4,8 @@ library("zoo")
 #PURPOSE: this file is the main analysis code for the unsupervised technique
 
 analyze_driver <- function(driver){
-  
-  
-  
-  trips=NULL
-  dens_info = NULL
-  acf_info = NULL
-  vel_info = NULL
-  acc_shift_info = NULL
   trip_data = NULL
-  
-  row_names = NULL
-  
-  #   for(driver in drivers){
+  missing_rows = NULL
   
   
   dirPath = paste0("drivers/", driver, "/")
@@ -53,29 +42,29 @@ analyze_driver <- function(driver){
     
     #work on acceleration info
     pp.acc <- predict(smooth.spline(pp.vel, df=time_end/i), deriv=1)
-    pp.accx <- predict(smooth.spline(pp.velx$y, df=time_end/i), deriv=1)
-    pp.accy <- predict(smooth.spline(pp.vely$y, df=time_end/i), deriv=1)  
+    pp.acc_deriv <- predict(smooth.spline(pp.acc, df=time_end/i), deriv=1)
     
     #acf(pp.acc$y)
     vel0 = pp.vel > 2
     
     #this section being skipped since only velocity plots are desired
-    if(sum(vel0)>2){
+    #increased to 10 for the ACF stuff to work
+    if(sum(vel0)>10){
       
       
       
       #calculate density info for acc
-      dens_acc = density(pp.acc$y[vel0], from=-2, to = 2, n=20)
-      
+      dens_acc = density(pp.acc$y[vel0], from=-2, to = 2, n=15)    
       
       #calculate density info for acc
-      dens_vel = density(pp.vel[vel0], from=2, to=35, n=20)
+      dens_vel = density(pp.vel[vel0], from=2, to=35, n=15)
       
+      #get density for the acc_deriv
+      dens_accDeriv = density(pp.acc_deriv$y[vel0], n=15, from=-0.5, to=0.5)
       
       #create a data frame for the different pieces
       pp.dist = cumsum(pp.vel)
       pp.dist.grab = seq(from=0, to=length(pp.dist), length.out = 15)
-      #       trip = data.frame(t(dens_acc$y))#, t(pp.dist[pp.dist.grab]))
       
       spots = 15
       
@@ -120,23 +109,21 @@ analyze_driver <- function(driver){
       dy = as.data.frame(t(delta_y))
       colnames(dy) = paste(c("dy"), 1:(spots-1), sep="")      
       
-      trip = data.frame(t(dens_vel$y), t(dens_acc$y), t(pp.dist[pp.dist.grab]), dx, dy)        
+      df.dens_vel = data.frame(t(dens_vel$y))
+      colnames(df.dens_vel) = paste(c("vel"), seq(dens_vel$y), sep="")
       
-      if(!is.null(trip_data)){
-      names(trip) = names(trip_data)
-      }
+      df.dens_acc = data.frame(t(dens_acc$y))
+      colnames(df.dens_acc) = paste(c("acc"), seq(dens_acc$y), sep="")
       
+      df.dens_acc_deriv = data.frame(t(dens_accDeriv$y))
+      colnames(df.dens_acc_deriv) = paste(c("accD"), seq(dens_accDeriv$y), sep="")
+      
+      trip = data.frame(df.dens_vel, df.dens_acc, df.dens_acc_deriv, t(pp.dist[pp.dist.grab]), dx, dy)    
       trip_data = rbind(trip_data, trip)
-      
-      
     }
     else{
-      #this line exists to catch routes with no velocity. these are really garbage trips
-      if(is.null(trip_data)){
-        trip_data = rbind(trip_data, data.frame(t(rep(0,82))))
-      }else{
-        trip_data = rbind(trip_data, setNames(data.frame(t(rep(0,length(trip_data)))), names(trip_data)))
-      }
+      #create a default option for those routes with no good data
+      missing_rows = c(missing_rows, k)
     }
   }
   #   }
@@ -147,23 +134,32 @@ analyze_driver <- function(driver){
   
   dst = dist(trips_scaled, method="euclidean")
   hc = hclust(dst, method="single")
-  #   plot(hc)
-  # ord = cmdscale(dst, k=2)
-  # den = as.dendrogram(hc)
-  # x = scores(ord, display="sites")
-  # oden = reorder(den, x)
-  # plot(oden)
   
   # this is some math to get to probabilities
   cop = as.matrix(cophenetic(hc))
   cop[cop==0] = NA
   cop.min = as.data.frame(apply(cop, 2, min, na.rm = TRUE))
+  colnames(cop.min) = c("height")
   
-  prob = ecdf(dst)
-  probs = 1 - apply(cop.min, 1, prob)  
-  probs.df = data.frame(probs, trip=1:200, driver = driver)
+  #do the PCA bit here and get a second set of heights
+  trips.pca = prcomp(trip_data, scale=T)
+  dst.pca = dist(trips.pca$x)
+  hc.pca = hclust(dst.pca, method="single")
   
-  write.csv(file=paste0("results/", driver, ".csv"), x= probs.df, row.names=FALSE)
+  cop.pca = as.matrix(cophenetic(hc.pca))
+  cop.pca[cop.pca==0] = NA
+  cop.pca.min = as.data.frame(apply(cop.pca, 2, min, na.rm = TRUE))
+  colnames(cop.pca.min) = c("height_pca")
   
-  return( probs.df)
+  cop.all = cbind(cop.min, cop.pca.min)
+  
+  #need to drop in the replacement rows w/ very large height
+  for(missing in missing_rows){
+    missing = missing - 1
+    cop.all = rbind(cop.all[1:missing,], c(1000,1000), cop.all[-(1:missing),])
+  }
+  
+  rownames(cop.all) = seq(cop.all[[1]])
+  
+  write.csv(file=paste0("results_round2/", driver, ".csv"), x= cop.all, row.names=TRUE)
 }
