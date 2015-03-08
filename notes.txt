@@ -1,3 +1,14 @@
+2015 03 07
+
+Did some quick profiling and it appears that most of the time is spent in the spline prediction.  Since these are not changing, might want to output this to disk to save speed.
+ - If this code is not critical, could also go ahead and compare it to diff and see what differences it makes.
+
+2015 03 06
+
+Added a line of code to the vis file to allow for looking at cumulative distributions on the different distributions.  I think this should be a better way of looking at how many results are in a given range.  It + the distribution might be a better fit.  If that doesn't work, might be able to look into doing more deliberate threshold techniques.
+
+Might also want to take a quick look at profiling to see if there are any obvious speed gains.
+
 2015 03 03
 
 Added in the third derivative and provided the means to do PCA on the output.  The new output is a set of heights that can then be globally compared and ordered.  Looks like it is mostly ready to go.  Might want to test a 100 or so trips to see what goes wrong.

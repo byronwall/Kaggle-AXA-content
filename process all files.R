@@ -1,12 +1,14 @@
 #this file will combine results from the different result files
 
-filename = "submission_round2_noPCA.csv"
+library("tools")
+
+filename = "submission_round3_noPCA.csv"
 file.create(filename)
 
-files = dir("results_round2/")
+files = dir("../results_round3/")
 
 for(file in 1:length(files)){
-  preds = read.csv(paste0("results_round2/", files[file]), 
+  preds = read.csv(paste0("../results_round3/", files[file]), 
                    header=TRUE, sep=",", 
                    colClasses=c("character", "numeric", "numeric"))
   

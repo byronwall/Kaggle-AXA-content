@@ -1,6 +1,3 @@
-library("ggplot2")  # this library is needed
-library("zoo")
-
 #PURPOSE: this file is the main analysis code for the unsupervised technique
 
 analyze_driver <- function(driver){
@@ -35,14 +32,15 @@ analyze_driver <- function(driver){
     
     time_end = length(pos$x) - 1
     
-    #for these, x = time, y = vel
-    pp.velx <- predict(smooth.spline(pos$x, df=time_end/i), deriv=1)
-    pp.vely <- predict(smooth.spline(pos$y, df=time_end/i), deriv=1)    
-    pp.vel <- sqrt(pp.velx$y^2 + pp.vely$y^2)
+    posx.spline = smooth.spline(pos$x, df=time_end/i)
+    posy.spline = smooth.spline(pos$y, df=time_end/i)
     
-    #work on acceleration info
-    pp.acc <- predict(smooth.spline(pp.vel, df=time_end/i), deriv=1)
-    pp.acc_deriv <- predict(smooth.spline(pp.acc, df=time_end/i), deriv=1)
+    velx.deriv = predict(posx.spline, deriv=1)
+    vely.deriv = predict(posy.spline, deriv=1)    
+    
+    pp.vel = sqrt(velx.deriv$y^2 + vely.deriv$y^2)
+    
+    
     
     #acf(pp.acc$y)
     vel0 = pp.vel > 2
@@ -51,20 +49,55 @@ analyze_driver <- function(driver){
     #increased to 10 for the ACF stuff to work
     if(sum(vel0)>10){
       
+      #work on acceleration info      
+      accx.deriv = predict(posx.spline, deriv=2)
+      accy.deriv = predict(posy.spline, deriv=2)    
       
+      pp.acc = (velx.deriv$y * accx.deriv$y + vely.deriv$y * accy.deriv$y)/pp.vel
+      
+      accx.2deriv = predict(posx.spline, deriv=3)
+      accy.2deriv = predict(posy.spline, deriv=3)    
+      
+      pp.acc_mag = sqrt(accx.deriv$y^2 + accy.deriv$y^2)
+      pp.acc_deriv = (accx.deriv$y * accx.2deriv$y + accy.deriv$y * accy.2deriv$y)/pp.acc_mag
+      
+      pp.radius = ((velx.deriv$y^2 + vely.deriv$y^2) ^ (3/2)) / 
+        abs(velx.deriv$y * accy.deriv$y - vely.deriv$y * accx.deriv$y)
+      #pp.radius[pp.radius > 10000] = NA
+      
+      pp.acc_cent = pp.vel^2 / pp.radius
+      
+      ###this is now the distribution section
       
       #calculate density info for acc
-      dens_acc = density(pp.acc$y[vel0], from=-2, to = 2, n=15)    
+      dens_acc = density(pp.acc[vel0], from=-2, to = 2, n=15)    
       
       #calculate density info for acc
       dens_vel = density(pp.vel[vel0], from=2, to=35, n=15)
       
       #get density for the acc_deriv
-      dens_accDeriv = density(pp.acc_deriv$y[vel0], n=15, from=-0.5, to=0.5)
+      dens_accDeriv = density(pp.acc_deriv[vel0], n=15, from=-0.5, to=0.5)
+      
+      #these are the new cumulative infos
+      vel_cdf = ecdf(pp.vel[vel0])
+      vel_cdf_seq = seq(0,35,length.out=15)
+      vel_dens_cum = vel_cdf(vel_cdf_seq)
+      
+      acc_cdf = ecdf(pp.acc[vel0])
+      acc_cdf_seq = seq(-2,2,length.out=15)
+      acc_dens_cum = acc_cdf(acc_cdf_seq)
+      
+      acc2_cdf = ecdf(pp.acc_deriv[vel0])
+      acc2_cdf_seq = seq(-1,1,length.out=15)
+      acc2_dens_cum = acc2_cdf(acc2_cdf_seq)
+      
+      centr_cdf = ecdf(pp.acc_cent[vel0])
+      centr_cdf_seq = seq(0,2.5,length.out=15)
+      centr_dens_cum = centr_cdf(centr_cdf_seq)
       
       #create a data frame for the different pieces
       pp.dist = cumsum(pp.vel)
-      pp.dist.grab = seq(from=0, to=length(pp.dist), length.out = 15)
+      pp.dist.grab = seq(from=0, to=length(pp.dist), length.out = 5)
       
       spots = 15
       
@@ -118,7 +151,24 @@ analyze_driver <- function(driver){
       df.dens_acc_deriv = data.frame(t(dens_accDeriv$y))
       colnames(df.dens_acc_deriv) = paste(c("accD"), seq(dens_accDeriv$y), sep="")
       
-      trip = data.frame(df.dens_vel, df.dens_acc, df.dens_acc_deriv, t(pp.dist[pp.dist.grab]), dx, dy)    
+      #add in cumulatives
+      df.cum_vel = data.frame(t(vel_dens_cum))
+      colnames(df.cum_vel) = paste(c("vel_cum"), seq(df.cum_vel), sep="")
+      
+      df.cum_acc = data.frame(t(acc_dens_cum))
+      colnames(df.cum_acc) = paste(c("acc_cum"), seq(df.cum_acc), sep="")
+      
+      df.cum_acc2 = data.frame(t(acc2_dens_cum))
+      colnames(df.cum_acc2) = paste(c("acc2_cum"), seq(df.cum_acc2), sep="")
+      
+      df.cum_centr = data.frame(t(centr_dens_cum))
+      colnames(df.cum_centr) = paste(c("centr_cum"), seq(df.cum_centr), sep="")      
+      
+      
+      trip = data.frame(df.dens_vel, df.dens_acc, df.dens_acc_deriv,
+                        df.cum_vel, df.cum_acc, df.cum_acc2, df.cum_centr,
+                        t(pp.dist[pp.dist.grab]), 
+                        dx, dy)    
       trip_data = rbind(trip_data, trip)
     }
     else{
@@ -142,7 +192,7 @@ analyze_driver <- function(driver){
   colnames(cop.min) = c("height")
   
   #do the PCA bit here and get a second set of heights
-  trips.pca = prcomp(trip_data, scale=T)
+  trips.pca = prcomp(trip_data[,apply(trip_data, 2, var, na.rm=TRUE) != 0], scale=T)
   dst.pca = dist(trips.pca$x)
   hc.pca = hclust(dst.pca, method="single")
   
@@ -161,5 +211,5 @@ analyze_driver <- function(driver){
   
   rownames(cop.all) = seq(cop.all[[1]])
   
-  write.csv(file=paste0("results_round2/", driver, ".csv"), x= cop.all, row.names=TRUE)
+  write.csv(file=paste0("../results_round3/", driver, ".csv"), x= cop.all, row.names=TRUE)
 }
