@@ -1,3 +1,11 @@
+2015 03 08
+
+Made a round3 submission which did not have a major change from before.  It looks like this method has peaked.  Handful of things to try next before time runs out:
+ - Run the unsupervised method without the trip matching.  It will be interesting to see what effect this has.
+ - Begin trying out some supervised methods.
+
+Did the submission without trip matching.  There was a very small drop in score compared to previous entries.  PCA still did better than without in.  Need to move on to other techniques now.
+
 2015 03 07
 
 Did some quick profiling and it appears that most of the time is spent in the spline prediction.  Since these are not changing, might want to output this to disk to save speed.

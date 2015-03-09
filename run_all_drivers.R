@@ -5,7 +5,7 @@ library("doParallel")
 #TODO: allow this to write to the file by appending instead of joining a large data.frame
 
 #this queues up a 3-core parallel solution; leaves one for the rest of the computer
-registerDoParallel(cores = 3)
+registerDoParallel(cores = 4)
 
 #go through the drivers and find the ones that are real
 driver.list = as.numeric(dir("drivers", include.dirs = TRUE))

@@ -97,50 +97,7 @@ analyze_driver <- function(driver){
       
       #create a data frame for the different pieces
       pp.dist = cumsum(pp.vel)
-      pp.dist.grab = seq(from=0, to=length(pp.dist), length.out = 5)
-      
-      spots = 15
-      
-      max_dist = max(pp.dist)
-      
-      dist_indices <- seq(spots)
-      #dist_target = max_dist / spots
-      
-      dist_index = 1
-      
-      dist_delta = max_dist / spots
-      dist_target = dist_delta
-      
-      for(spot in seq_along(pp.dist)){
-        #the -1 below handles small errors (epsilon)
-        if(pp.dist[spot]>=dist_target-1){
-          dist_indices[dist_index] = spot
-          
-          if(dist_index == spots){break}
-          
-          dist_index = dist_index + 1        
-          dist_target = dist_target + dist_delta
-        }
-        
-      }
-      
-      #get the position at those points and log the delta from previous point (x,y)
-      
-      start_x = pos$x[dist_indices]
-      start_y = pos$y[dist_indices]
-      
-      end_x = pos$x[dist_indices[2:spots]]
-      end_y = pos$y[dist_indices[2:spots]]
-      
-      delta_x = (end_x - start_x[1:(spots-1)]) / dist_delta
-      delta_y = (end_y - start_y[1:(spots-1)]) / dist_delta
-      
-      #need to create the object with all values
-      dx = as.data.frame(t(delta_x))
-      colnames(dx) = paste(c("dx"), 1:(spots-1), sep="")
-      
-      dy = as.data.frame(t(delta_y))
-      colnames(dy) = paste(c("dy"), 1:(spots-1), sep="")      
+      pp.dist.grab = seq(from=0, to=length(pp.dist), length.out = 5) 
       
       df.dens_vel = data.frame(t(dens_vel$y))
       colnames(df.dens_vel) = paste(c("vel"), seq(dens_vel$y), sep="")
@@ -167,8 +124,7 @@ analyze_driver <- function(driver){
       
       trip = data.frame(df.dens_vel, df.dens_acc, df.dens_acc_deriv,
                         df.cum_vel, df.cum_acc, df.cum_acc2, df.cum_centr,
-                        t(pp.dist[pp.dist.grab]), 
-                        dx, dy)    
+                        t(pp.dist[pp.dist.grab]))    
       trip_data = rbind(trip_data, trip)
     }
     else{
@@ -211,5 +167,5 @@ analyze_driver <- function(driver){
   
   rownames(cop.all) = seq(cop.all[[1]])
   
-  write.csv(file=paste0("../results_round3/", driver, ".csv"), x= cop.all, row.names=TRUE)
+  write.csv(file=paste0("../results_round4/", driver, ".csv"), x= cop.all, row.names=TRUE)
 }
