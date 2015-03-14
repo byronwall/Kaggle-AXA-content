@@ -1,5 +1,8 @@
 2015 03 08
 
+Evening:
+Got start on logistic regression.  Looks like the slow step is reading all the data.  Need to figure out how to best improve the model that is generated.  Appears to be some that are garbarge and others that are widely variable.  Suspect best results will come from averaging multiple.  Might want an ensemble or something there?
+
 Made a round3 submission which did not have a major change from before.  It looks like this method has peaked.  Handful of things to try next before time runs out:
  - Run the unsupervised method without the trip matching.  It will be interesting to see what effect this has.
  - Begin trying out some supervised methods.
